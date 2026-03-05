@@ -13,6 +13,9 @@ class ContentBlockConverter:
     
     def __init__(self):
         self.current_block_index = 0
+        # ResultMessage から累積するトークン使用量
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
     
     def convert_message_to_events(self, message: Any) -> Iterator[Dict[str, Any]]:
         """
@@ -26,11 +29,24 @@ class ContentBlockConverter:
         """
         message_type = type(message).__name__
         
-        # 内部メッセージ型（クライアントに送信しない）
-        internal_message_types = {"SystemMessage", "ResultMessage"}
-        
-        if message_type in internal_message_types:
+        # SystemMessage は内部メッセージ型（クライアントに送信しない）
+        if message_type == "SystemMessage":
             logger.debug(f"Skipping internal message type: {message_type}")
+            return
+        
+        # ResultMessage からトークン使用量を抽出
+        if message_type == "ResultMessage":
+            usage = getattr(message, "usage", None)
+            if usage and isinstance(usage, dict):
+                self.total_input_tokens += usage.get("input_tokens", 0)
+                self.total_output_tokens += usage.get("output_tokens", 0)
+                logger.info(
+                    f"ResultMessage usage: input={usage.get('input_tokens', 0)}, "
+                    f"output={usage.get('output_tokens', 0)}, "
+                    f"累計: input={self.total_input_tokens}, output={self.total_output_tokens}"
+                )
+            else:
+                logger.debug(f"ResultMessage without usage data: {getattr(message, 'subtype', 'unknown')}")
             return
         
         # AssistantMessage の場合（content 配列を持つ）
