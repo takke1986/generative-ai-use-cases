@@ -1,4 +1,4 @@
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import * as cdk from 'aws-cdk-lib';
 import {
   processedStackInputSchema,
@@ -276,6 +276,54 @@ describe('GenerativeAiUseCases', () => {
 
     // Assert
     expect(agentCoreTemplate.toJSON()).toMatchSnapshot();
+  });
+
+  test('browser permissions are granted only when enabled', () => {
+    const enabledApp = new cdk.App();
+    const enabledParams = processedStackInputSchema.parse({
+      ...stackInput,
+      agentBuilderEnabled: true,
+      agentBuilderBrowserEnabled: true,
+    });
+    const { agentCoreStack: enabledStack } = createStacks(
+      enabledApp,
+      enabledParams
+    );
+    if (!enabledStack) {
+      throw new Error('AgentCore stack is not created');
+    }
+    Template.fromStack(enabledStack).hasResourceProperties(
+      'AWS::IAM::Policy',
+      Match.objectLike({
+        PolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Sid: 'BrowserTool',
+              Action: Match.arrayWith([
+                'bedrock-agentcore:StartBrowserSession',
+                'bedrock-agentcore:ConnectBrowserAutomationStream',
+              ]),
+            }),
+          ]),
+        }),
+      })
+    );
+
+    const disabledApp = new cdk.App();
+    const disabledParams = processedStackInputSchema.parse({
+      ...stackInput,
+      agentBuilderEnabled: true,
+      agentBuilderBrowserEnabled: false,
+    });
+    const { agentCoreStack: disabledStack } = createStacks(
+      disabledApp,
+      disabledParams
+    );
+    if (!disabledStack) {
+      throw new Error('AgentCore stack is not created');
+    }
+    const disabledTemplate = Template.fromStack(disabledStack).toJSON();
+    expect(JSON.stringify(disabledTemplate)).not.toContain('BrowserTool');
   });
 
   test('AgentCore VPC config requires both vpcId and subnetIds', () => {

@@ -24,6 +24,16 @@ except ImportError as e:
     logger.warning(f"Strands code interpreter tool not available: {e}")
     AgentCoreCodeInterpreter = None
 
+# Import strands-agents browser tool
+try:
+    from strands_tools.browser import AgentCoreBrowser
+
+    BROWSER_AVAILABLE = True
+except ImportError as e:
+    BROWSER_AVAILABLE = False
+    logging.getLogger(__name__).warning(f"Strands browser tool not available: {e}")
+    AgentCoreBrowser = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -192,12 +202,29 @@ class ToolManager:
 
         return code_interpreter_tools
 
-    def get_tools_with_options(self, code_execution_enabled: bool = False, mcp_servers=None) -> list[Any]:
+    def get_browser_tool(self) -> list[Any]:
+        """Get the AgentCore Browser tool if available"""
+        browser_tools = []
+
+        if BROWSER_AVAILABLE and AgentCoreBrowser:
+            try:
+                aws_creds = get_aws_credentials()
+                region = aws_creds.get("AWS_REGION", "us-east-1")
+                browser = AgentCoreBrowser(region=region)
+                browser_tools.append(browser.browser)
+                logger.info("Added browser tool (AgentCoreBrowser)")
+            except Exception as e:
+                logger.warning(f"Failed to initialize AgentCoreBrowser: {e}")
+
+        return browser_tools
+
+    def get_tools_with_options(self, code_execution_enabled: bool = False, browser_enabled: bool = False, mcp_servers=None) -> list[Any]:
         """
         Get tools with optional code execution and MCP servers.
 
         Args:
             code_execution_enabled: Whether to include code interpreter tools
+            browser_enabled: Whether to include the browser tool
             mcp_servers: MCP server configurations
                 - None: Load default MCP servers from mcp.json
                 - []: Empty list, no MCP servers (File Upload only)
@@ -206,7 +233,7 @@ class ToolManager:
         Returns:
             List of all available tools
         """
-        logger.info(f"get_tools_with_options called with code_execution_enabled={code_execution_enabled}")
+        logger.info(f"get_tools_with_options called with code_execution_enabled={code_execution_enabled}, browser_enabled={browser_enabled}")
         logger.info(f"mcp_servers parameter: {mcp_servers} (type: {type(mcp_servers)})")
 
         all_tools = []
@@ -241,7 +268,17 @@ class ToolManager:
             code_interpreter_tools = self.get_code_interpreter_tool()
             all_tools.extend(code_interpreter_tools)
 
+        # Add browser tool if enabled
+        browser_tools = []
+        if browser_enabled:
+            browser_tools = self.get_browser_tool()
+            all_tools.extend(browser_tools)
+
         # Log final tool count
-        logger.info(f"Total tools loaded: {len(all_tools)} (MCP: {len(mcp_tools)}, Built-in: 1, Code Interpreter: {len(code_interpreter_tools)} - {'enabled' if code_execution_enabled else 'disabled'})")
+        logger.info(
+            f"Total tools loaded: {len(all_tools)} (MCP: {len(mcp_tools)}, Built-in: 1, "
+            f"Code Interpreter: {len(code_interpreter_tools)} - {'enabled' if code_execution_enabled else 'disabled'}, "
+            f"Browser: {len(browser_tools)} - {'enabled' if browser_enabled else 'disabled'})"
+        )
 
         return all_tools

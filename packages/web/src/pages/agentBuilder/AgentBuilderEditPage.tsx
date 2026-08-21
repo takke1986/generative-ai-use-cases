@@ -44,6 +44,7 @@ const AgentBuilderEditPage: React.FC = () => {
           modelId: formData.modelId,
           mcpServers: formData.mcpServers as string[], // Explicit type assertion
           codeExecutionEnabled: formData.codeExecutionEnabled,
+          browserEnabled: formData.browserEnabled,
           isPublic: formData.isPublic,
           tags: formData.tags,
           agentId,
@@ -62,6 +63,7 @@ const AgentBuilderEditPage: React.FC = () => {
           modelId: formData.modelId,
           mcpServers: formData.mcpServers as string[], // Explicit type assertion
           codeExecutionEnabled: formData.codeExecutionEnabled,
+          browserEnabled: formData.browserEnabled,
           isPublic: formData.isPublic,
           tags: formData.tags,
         });
@@ -203,6 +205,7 @@ const AgentBuilderEditPage: React.FC = () => {
                       mcpServers: currentFormData.mcpServers as string[],
                       codeExecutionEnabled:
                         currentFormData.codeExecutionEnabled,
+                      browserEnabled: currentFormData.browserEnabled,
                       isPublic: currentFormData.isPublic,
                       tags: currentFormData.tags,
                       isMyAgent: true,

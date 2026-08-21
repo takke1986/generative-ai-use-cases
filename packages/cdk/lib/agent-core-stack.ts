@@ -27,6 +27,7 @@ export class AgentCoreStack extends Stack {
         agentCoreVpcId: params.agentCoreVpcId,
         agentCoreSubnetIds: params.agentCoreSubnetIds,
         gatewayArns: params.agentCoreGatewayArns ?? undefined,
+        browserEnabled: params.agentBuilderBrowserEnabled,
       });
 
       // Export runtime info for cross-region access via cdk-remote-stack (only if values exist)

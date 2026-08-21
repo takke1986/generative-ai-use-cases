@@ -159,6 +159,9 @@ const baseStackInputSchema = z.object({
   createGenericAgentCoreRuntime: z.boolean().default(false),
   agentCoreRegion: z.string().nullish(),
   agentCoreGatewayArns: z.array(z.string()).nullish(),
+  // Allow agents created in the agent builder to use the AgentCore Browser tool.
+  // The runtime execution role is granted browser permissions only when enabled.
+  agentBuilderBrowserEnabled: z.boolean().default(false),
   agentCoreExternalRuntimes: z
     .array(
       z.object({

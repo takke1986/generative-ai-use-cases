@@ -41,6 +41,8 @@ export interface GenericAgentCoreProps {
   agentCoreVpcId?: string | null;
   agentCoreSubnetIds?: string[] | null;
   gatewayArns?: string[];
+  // Grant the runtime permission to use the AgentCore Browser tool.
+  browserEnabled?: boolean;
 }
 
 interface RuntimeResources {
@@ -55,6 +57,7 @@ export class GenericAgentCore extends Construct {
   private readonly agentBuilderRuntimeConfig: AgentCoreRuntimeConfig;
   private readonly resources: RuntimeResources;
   private readonly gatewayArns?: string[];
+  private readonly browserEnabled: boolean;
 
   // Security Group ID that requires manual cleanup after AgentCore Runtime deletion
   // Used for CloudFormation Output to remind users of manual cleanup tasks
@@ -71,9 +74,11 @@ export class GenericAgentCore extends Construct {
       agentCoreVpcId = null,
       agentCoreSubnetIds = null,
       gatewayArns,
+      browserEnabled = false,
     } = props;
 
     this.gatewayArns = gatewayArns;
+    this.browserEnabled = browserEnabled;
 
     // Create bucket first
     this._fileBucket = this.createFileBucket();
@@ -213,6 +218,11 @@ export class GenericAgentCore extends Construct {
     }
 
     this.configureRolePermissions(role, this.gatewayArns);
+
+    // Browser permissions are granted only when the tool is enabled
+    if (this.browserEnabled) {
+      this.configureBrowserPermissions(role);
+    }
     return resources;
   }
 
@@ -346,6 +356,24 @@ export class GenericAgentCore extends Construct {
     );
 
     this._fileBucket.grantWrite(role);
+  }
+
+  private configureBrowserPermissions(role: Role): void {
+    role.addToPolicy(
+      new PolicyStatement({
+        sid: 'BrowserTool',
+        effect: Effect.ALLOW,
+        actions: [
+          'bedrock-agentcore:StartBrowserSession',
+          'bedrock-agentcore:StopBrowserSession',
+          'bedrock-agentcore:GetBrowserSession',
+          'bedrock-agentcore:ListBrowserSessions',
+          'bedrock-agentcore:UpdateBrowserStream',
+          'bedrock-agentcore:ConnectBrowserAutomationStream',
+        ],
+        resources: ['*'],
+      })
+    );
   }
 
   // Public getters - all non-optional

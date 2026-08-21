@@ -940,6 +940,18 @@ AWS 外部のサービスにアクセスする場合、AgentCore Gateway を使�
 設定後、MCP 設定で `mcp-proxy-for-aws` を使用してエンドポイントを指定します。
 詳細は [mcp-proxy-for-aws のドキュメント](https://github.com/aws/mcp-proxy-for-aws)を参照してください。
 
+#### ブラウザ操作ツールの有効化
+
+`agentBuilderBrowserEnabled` を有効化すると、Amazon Bedrock AgentCore の Browser ツールが追加され、ユーザーは Agent ごとに利用の有無を選択できます。マネージドなクラウドブラウザが AWS 側で動作するため、利用者の端末に Chrome や Playwright をインストールする必要はありません。
+
+ページの遷移、フォーム入力、クリック、テキストや HTML の抽出、スクリーンショットの取得ができます。ログインが必要なページや JavaScript で描画されるページなど、Web 検索では取得できない情報に到達できます。
+
+> [!IMPORTANT]
+> ブラウザ操作は任意の URL に到達でき、JavaScript の実行 (`evaluate`) も含みます。組織のポリシーで利用しない場合は、`agentBuilderBrowserEnabled` を無効のままにしてください。無効の場合はランタイムの実行ロールにブラウザ関連の権限が付与されず、エージェントビルダーの画面にも選択肢は表示されません。
+
+> [!NOTE]
+> ブラウザセッションは実行時間に応じた課金が発生します。料金は [Amazon Bedrock AgentCore の料金ページ](https://aws.amazon.com/bedrock/agentcore/pricing/)を参照してください。
+
 **[parameter.ts](/packages/cdk/parameter.ts) を編集**
 
 ```typescript

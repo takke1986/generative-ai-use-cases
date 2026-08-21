@@ -921,6 +921,18 @@ By specifying the Gateway ARN in `agentCoreGatewayArns`, an IAM policy following
 After configuration, use `mcp-proxy-for-aws` in the MCP settings to specify the endpoint.
 For details, refer to the [mcp-proxy-for-aws documentation](https://github.com/aws/mcp-proxy-for-aws).
 
+#### Enabling the Browser Tool
+
+Enabling `agentBuilderBrowserEnabled` adds the Browser tool of Amazon Bedrock AgentCore, and users can choose whether each Agent uses it. The browser runs as a managed cloud browser on the AWS side, so users do not need to install Chrome or Playwright on their machines.
+
+The Agent can navigate pages, fill forms, click elements, extract text or HTML, and take screenshots. This makes it possible to reach information that web search cannot retrieve, such as pages behind a sign-in or pages rendered by JavaScript.
+
+> [!IMPORTANT]
+> The browser tool can reach any URL and includes JavaScript execution (`evaluate`). If your organization does not allow it, leave `agentBuilderBrowserEnabled` disabled. When disabled, the runtime execution role is not granted browser permissions and the option is not shown in the agent builder.
+
+> [!NOTE]
+> Browser sessions are charged based on runtime. See the [Amazon Bedrock AgentCore pricing page](https://aws.amazon.com/bedrock/agentcore/pricing/) for details.
+
 **Edit [parameter.ts](/packages/cdk/parameter.ts)**
 
 ```typescript
