@@ -21,7 +21,10 @@ agent_builder:
   basic_information: Basic Information
   bedrock_agent_description: Pre-configured Bedrock Agent with specialized capabilities
   browser: Browser
-  browser_description: Allows this agent to operate a managed cloud browser to navigate pages, fill forms and extract content. Useful for pages that require sign-in or are rendered by JavaScript.
+  browser_description: >-
+    Allows this agent to operate a managed cloud browser to navigate pages, fill forms and
+    extract content. Useful for pages that require sign-in or are rendered by JavaScript.
+    It can reach any URL and run JavaScript, so enable it only when needed.
   chat: chat
   check_back_later_description: Check back later for new public agents
   clone: Clone

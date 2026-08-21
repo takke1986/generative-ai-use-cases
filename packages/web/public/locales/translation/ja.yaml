@@ -22,7 +22,7 @@ agent_builder:
   bedrock_agent_description: 特別な機能を持つ事前設定済みのBedrockエージェント
   browser: ブラウザ操作
   browser_description: >-
-    このエージェントがマネージドなクラウドブラウザを操作して、ページの遷移、フォーム入力、コンテンツの抽出を行えるようにします。ログインが必要なページや JavaScript で描画されるページに有効です。
+    このエージェントがマネージドなクラウドブラウザを操作して、ページの遷移、フォーム入力、コンテンツの抽出を行えるようにします。ログインが必要なページや JavaScript で描画されるページに有効です。任意の URL に到達でき、JavaScript の実行も含むため、必要な場合のみ有効にしてください。
   chat: チャット
   check_back_later_description: 公開エージェントについては後でもう一度確認してください
   clone: クローン
