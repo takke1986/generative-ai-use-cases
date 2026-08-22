@@ -50,6 +50,7 @@ import GenerateDiagramPage from './pages/GenerateDiagramPage.tsx';
 import WriterPage from './pages/WriterPage.tsx';
 import useUseCases from './hooks/useUseCases';
 import { Toaster } from 'sonner';
+import MaintenanceGate from './components/MaintenanceGate';
 
 const ragEnabled: boolean = import.meta.env.VITE_APP_RAG_ENABLED === 'true';
 const ragKnowledgeBaseEnabled: boolean =
@@ -327,10 +328,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     {/* eslint-disable-next-line @shopify/jsx-no-hardcoded-content */}
     <React.Suspense fallback={<div>Loading...</div>}>
-      <Authenticator.Provider>
-        <RouterProvider router={router} />
-        <Toaster />
-      </Authenticator.Provider>
+      <MaintenanceGate>
+        <Authenticator.Provider>
+          <RouterProvider router={router} />
+          <Toaster />
+        </Authenticator.Provider>
+      </MaintenanceGate>
     </React.Suspense>
   </React.StrictMode>
 );
