@@ -1,5 +1,5 @@
-import { handler } from '../../lambda/updateFeedback';
-import { callHandler, HandlerRequest } from './api/callHandler';
+import { router } from '../../lambda/api/routes/chats';
+import { callRoute } from './api/callRoute';
 import { listMessages, updateFeedback } from '../../lambda/repository';
 import {
   RecordedMessage,
@@ -15,20 +15,14 @@ const mockedUpdateFeedback = updateFeedback as jest.MockedFunction<
   typeof updateFeedback
 >;
 
-// Helper function to create the request the handler receives
-function createRequest(
-  body: unknown | null,
-  chatId?: string,
-  userId?: string
-): HandlerRequest {
-  return {
+// Sends POST /chats/:chatId/feedbacks as the user
+const postFeedback = (body: unknown, chatId: string, userId: string) =>
+  callRoute(router, 'POST', `/${chatId}/feedbacks`, {
     body: body ?? undefined,
-    params: chatId ? { chatId } : {},
     userId,
-  };
-}
+  });
 
-describe('updateFeedback Lambda handler', () => {
+describe('POST /chats/:chatId/feedbacks', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
@@ -73,10 +67,7 @@ describe('updateFeedback Lambda handler', () => {
     mockedUpdateFeedback.mockResolvedValue(mockUpdatedMessage);
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest(updateFeedbackRequest, chatId, userId)
-    );
+    const result = await postFeedback(updateFeedbackRequest, chatId, userId);
 
     // Verify results
     expect(result.statusCode).toBe(200);
@@ -109,10 +100,7 @@ describe('updateFeedback Lambda handler', () => {
     mockedListMessages.mockResolvedValue([]);
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest(updateFeedbackRequest, chatId, userId)
-    );
+    const result = await postFeedback(updateFeedbackRequest, chatId, userId);
 
     // Restore console.warn
     console.warn = originalConsoleWarn;
@@ -159,10 +147,7 @@ describe('updateFeedback Lambda handler', () => {
     mockedListMessages.mockResolvedValue(mockMessages);
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest(updateFeedbackRequest, chatId, userId)
-    );
+    const result = await postFeedback(updateFeedbackRequest, chatId, userId);
 
     // Restore console.warn
     console.warn = originalConsoleWarn;
@@ -195,10 +180,7 @@ describe('updateFeedback Lambda handler', () => {
     console.log = jest.fn();
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest(updateFeedbackRequest, chatId, userId)
-    );
+    const result = await postFeedback(updateFeedbackRequest, chatId, userId);
 
     // Restore console.log
     console.log = originalConsoleLog;
@@ -221,10 +203,7 @@ describe('updateFeedback Lambda handler', () => {
     console.log = jest.fn();
 
     // No body provided in this test
-    const result = await callHandler(
-      handler,
-      createRequest(null, chatId, userId)
-    );
+    const result = await postFeedback(null, chatId, userId);
 
     // Restore console.log
     console.log = originalConsoleLog;

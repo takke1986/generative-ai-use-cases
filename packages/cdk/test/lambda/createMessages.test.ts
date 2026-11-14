@@ -1,5 +1,5 @@
-import { handler } from '../../lambda/createMessages';
-import { callHandler, HandlerRequest } from './api/callHandler';
+import { router } from '../../lambda/api/routes/chats';
+import { callRoute } from './api/callRoute';
 import {
   batchCreateMessages,
   findChatById,
@@ -31,20 +31,14 @@ afterAll(() => {
   process.env = originalEnv;
 });
 
-// Helper function to create the request the handler receives
-function createRequest(
-  body: unknown | null,
-  chatId?: string,
-  userId?: string
-): HandlerRequest {
-  return {
+// Sends POST /chats/:chatId/messages as the user
+const postMessages = (body: unknown, chatId: string, userId: string) =>
+  callRoute(router, 'POST', `/${chatId}/messages`, {
     body: body ?? undefined,
-    params: chatId ? { chatId } : {},
     userId,
-  };
-}
+  });
 
-describe('createMessages Lambda handler', () => {
+describe('POST /chats/:chatId/messages', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
@@ -89,10 +83,7 @@ describe('createMessages Lambda handler', () => {
     mockedBatchCreateMessages.mockResolvedValue(expectedRecordedMessages);
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest({ messages }, chatId, userId)
-    );
+    const result = await postMessages({ messages }, chatId, userId);
 
     // Verify results
     expect(result.statusCode).toBe(200);
@@ -126,22 +117,19 @@ describe('createMessages Lambda handler', () => {
     mockedBatchCreateMessages.mockResolvedValue([]);
     mockedSetChatUpdatedDate.mockRejectedValue(new Error('throttled'));
 
-    const result = await callHandler(
-      handler,
-      createRequest(
-        {
-          messages: [
-            {
-              messageId: 'msg123',
-              role: 'user',
-              content: 'Hello',
-              usecase: 'test',
-            },
-          ],
-        },
-        chatId,
-        userId
-      )
+    const result = await postMessages(
+      {
+        messages: [
+          {
+            messageId: 'msg123',
+            role: 'user',
+            content: 'Hello',
+            usecase: 'test',
+          },
+        ],
+      },
+      chatId,
+      userId
     );
 
     expect(result.statusCode).toBe(200);
@@ -196,10 +184,7 @@ describe('createMessages Lambda handler', () => {
     });
     mockedBatchCreateMessages.mockResolvedValue(expectedRecordedMessages);
 
-    const result = await callHandler(
-      handler,
-      createRequest({ messages }, chatId, userId)
-    );
+    const result = await postMessages({ messages }, chatId, userId);
 
     expect(result.statusCode).toBe(200);
     expect(mockedBatchCreateMessages).toHaveBeenCalledWith(
@@ -242,10 +227,7 @@ describe('createMessages Lambda handler', () => {
       updatedDate: '',
     });
 
-    const result = await callHandler(
-      handler,
-      createRequest({ messages }, chatId, userId)
-    );
+    const result = await postMessages({ messages }, chatId, userId);
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body)).toEqual({
@@ -287,10 +269,7 @@ describe('createMessages Lambda handler', () => {
       updatedDate: '',
     });
 
-    const result = await callHandler(
-      handler,
-      createRequest({ messages }, chatId, userId)
-    );
+    const result = await postMessages({ messages }, chatId, userId);
 
     expect(result.statusCode).toBe(400);
     expect(JSON.parse(result.body)).toEqual({
@@ -335,10 +314,7 @@ describe('createMessages Lambda handler', () => {
         },
       ];
 
-      const result = await callHandler(
-        handler,
-        createRequest({ messages }, chatId, userId)
-      );
+      const result = await postMessages({ messages }, chatId, userId);
 
       expect(result.statusCode).toBe(400);
       expect(JSON.parse(result.body)).toEqual({
@@ -366,10 +342,7 @@ describe('createMessages Lambda handler', () => {
     mockedFindChatById.mockResolvedValue(null);
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest({ messages }, chatId, userId)
-    );
+    const result = await postMessages({ messages }, chatId, userId);
 
     // Verify results
     expect(result.statusCode).toBe(403);
@@ -401,10 +374,7 @@ describe('createMessages Lambda handler', () => {
     });
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest({ messages }, chatId, userId)
-    );
+    const result = await postMessages({ messages }, chatId, userId);
 
     // Verify results
     expect(result.statusCode).toBe(500);

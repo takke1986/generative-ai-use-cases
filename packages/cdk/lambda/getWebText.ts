@@ -1,4 +1,3 @@
-import { Request, Response } from 'express';
 import { parse } from 'node-html-parser';
 import sanitizeHtml from 'sanitize-html';
 import { URL } from 'url';
@@ -43,8 +42,8 @@ function isPrivateIP(ip: string): boolean {
   });
 }
 
-// Function to validate URL safety
-async function validateUrl(
+// Function to validate URL safety. Call it before getWebText.
+export async function validateUrl(
   urlString: string
 ): Promise<{ valid: boolean; message?: string }> {
   try {
@@ -105,46 +104,26 @@ async function validateUrl(
   }
 }
 
-export const handler = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const url = typeof req.query.url === 'string' ? req.query.url : undefined;
+// Fetches the page and returns the text of its body. Check the URL with
+// validateUrl first.
+export const getWebText = async (url: string): Promise<string | undefined> => {
+  const result = await fetch(url);
+  const html = await result.text();
+  // Fix invalid tags
+  const cleanHtml = sanitizeHtml(html, {
+    // body and html are removed by default, so this option prevents that
+    allowedTags: [...sanitizeHtml.defaults.allowedTags, 'body', 'html'],
+  });
+  const root = parse(cleanHtml, {
+    comment: false,
+    blockTextElements: {
+      script: false,
+      noScript: false,
+      style: false,
+      pre: false,
+    },
+  });
+  const text = root?.querySelector('body')?.removeWhitespace().text;
 
-    if (!url) {
-      res.status(400).json({ message: 'url is missing' });
-      return;
-    }
-
-    // Validate URL safety
-    const validation = await validateUrl(url);
-    if (!validation.valid) {
-      res.status(403).json({
-        message: validation.message || 'Access denied',
-      });
-      return;
-    }
-
-    // Execute request if URL is confirmed safe
-    const result = await fetch(url);
-    const html = await result.text();
-    // Fix invalid tags
-    const cleanHtml = sanitizeHtml(html, {
-      // body and html are removed by default, so this option prevents that
-      allowedTags: [...sanitizeHtml.defaults.allowedTags, 'body', 'html'],
-    });
-    const root = parse(cleanHtml, {
-      comment: false,
-      blockTextElements: {
-        script: false,
-        noScript: false,
-        style: false,
-        pre: false,
-      },
-    });
-    const text = root?.querySelector('body')?.removeWhitespace().text;
-
-    res.status(200).json({ text });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
+  return text;
 };

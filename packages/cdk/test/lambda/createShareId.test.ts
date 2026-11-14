@@ -1,5 +1,5 @@
-import { handler } from '../../lambda/createShareId';
-import { callHandler, HandlerRequest } from './api/callHandler';
+import { router } from '../../lambda/api/routes/shares';
+import { callRoute } from './api/callRoute';
 import { createShareId, findChatById } from '../../lambda/repository';
 import { ShareId, UserIdAndChatId } from 'generative-ai-use-cases';
 
@@ -12,15 +12,11 @@ const mockedFindChatById = findChatById as jest.MockedFunction<
   typeof findChatById
 >;
 
-// Helper function to create the request the handler receives
-function createRequest(chatId?: string, userId?: string): HandlerRequest {
-  return {
-    params: chatId ? { chatId } : {},
-    userId,
-  };
-}
+// Sends POST /shares/chat/:chatId, as the user when userId is given
+const shareChat = (chatId: string, userId?: string) =>
+  callRoute(router, 'POST', `/chat/${chatId}`, { userId });
 
-describe('createShareId Lambda handler', () => {
+describe('POST /shares/chat/:chatId', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
@@ -63,7 +59,7 @@ describe('createShareId Lambda handler', () => {
     });
 
     // Execute test
-    const result = await callHandler(handler, createRequest(chatId, userId));
+    const result = await shareChat(chatId, userId);
 
     // Verify results
     expect(result.statusCode).toBe(200);
@@ -84,7 +80,7 @@ describe('createShareId Lambda handler', () => {
     mockedFindChatById.mockResolvedValue(null);
 
     // Execute test
-    const result = await callHandler(handler, createRequest(chatId, userId));
+    const result = await shareChat(chatId, userId);
 
     // Verify results
     expect(result.statusCode).toBe(403);
@@ -116,7 +112,7 @@ describe('createShareId Lambda handler', () => {
     mockedCreateShareId.mockRejectedValue(new Error('Database error'));
 
     // Execute test
-    const result = await callHandler(handler, createRequest(chatId, userId));
+    const result = await shareChat(chatId, userId);
 
     // Restore console.log
     console.log = originalConsoleLog;
@@ -128,26 +124,20 @@ describe('createShareId Lambda handler', () => {
     });
   });
 
-  // Test for missing chatId parameter
-  test('handles missing chatId parameter properly', async () => {
-    const userId = 'testUser';
-
-    // Mock console.log to prevent actual logging during test
+  // Test for a request without a signed-in user
+  test('returns 500 error when there is no signed-in user', async () => {
     const originalConsoleLog = console.log;
     console.log = jest.fn();
 
-    // No chatId provided in this test
-    const event = createRequest(undefined, userId);
-    const result = await callHandler(handler, event);
+    const result = await shareChat('chat123');
 
-    // Restore console.log
     console.log = originalConsoleLog;
 
-    // Based on the error, it appears the handler does call findChatById with undefined chatId
-    expect(result.statusCode).toBe(200);
-    expect(mockedFindChatById).toHaveBeenCalledWith(userId, undefined);
-    // We expect createShareId to also be called if the logic continues after findChatById
-    // but the actual behavior might be different - adjust as necessary
-    expect(mockedCreateShareId).toHaveBeenCalled();
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body)).toEqual({
+      message: 'Internal Server Error',
+    });
+    expect(mockedFindChatById).not.toHaveBeenCalled();
+    expect(mockedCreateShareId).not.toHaveBeenCalled();
   });
 });

@@ -56,27 +56,36 @@ packages/cdk/lambda/
 - **データアクセス層**: repository.tsで一元管理、機能別に必要な場合のみ分離
 - **共通処理**: utils/配下に外部サービス別に分割
 
-#### ルートとハンドラーの接続
+#### ルートとビジネスロジック
 
-各ハンドラーは Express ネイティブ（`req/res`）で実装し、`api/routes/` のルートにそのまま渡す。ログイン中のユーザーは `api/user.ts` の `getUserId(req)`（その他の claims は `getClaims(req)`）で取得する。
+HTTP の処理（リクエストの読み取り、検証、ステータスコード、レスポンス）は `api/routes/` のルートに Express ネイティブ（`req/res`）で書く。ログイン中のユーザーは `api/user.ts` の `getUserId(req)`（その他の claims は `getClaims(req)`）で取得する。
+
+- リポジトリの呼び出しだけで済む API は、ルートからリポジトリを直接呼ぶ
+- 外部サービスの呼び出しや加工を伴う処理は、`lambda/` 直下のファイルに `req/res` を持たない関数として置き、ルートから呼ぶ
 
 ```typescript
 // api/routes/chats.ts
-import { handler as createChatHandler } from '../../createChat';
-
-router.post('/', createChatHandler);
-
-// createChat.ts
-export const handler = async (req: Request, res: Response): Promise<void> => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const userId = getUserId(req);
-    const chat = await createChat(userId);
+    const chat = await createChat(getUserId(req));
     res.status(200).json({ chat });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
-};
+});
+
+// api/routes/video.ts
+router.post('/generate', async (req: Request, res: Response) => {
+  try {
+    const input: GenerateVideoRequest = req.body;
+    const job = await generateVideo(getUserId(req), input); // generateVideo.ts
+    res.status(200).json(job);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 ```
 
 #### フォルダ分離の判断基準

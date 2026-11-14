@@ -1,8 +1,10 @@
-import { handler } from '../../lambda/getWebText';
-import { callHandler, HandlerRequest } from './api/callHandler';
+import { router } from '../../lambda/api/routes/webText';
+import { callRoute } from './api/callRoute';
 
 // Mock the DNS lookup function
+// Keep the rest of util, which Express uses
 jest.mock('util', () => ({
+  ...jest.requireActual('util'),
   promisify: jest.fn().mockImplementation(() => {
     return (hostname: string) => {
       if (hostname === 'example-internal.com') {
@@ -16,10 +18,13 @@ jest.mock('util', () => ({
   }),
 }));
 
-// Helper function to create the request the handler receives
-function createRequest(url?: string): HandlerRequest {
-  return { query: url ? { url } : {} };
-}
+// Sends GET /web-text with the URL as its query
+const getWebText = (url?: string) =>
+  callRoute(
+    router,
+    'GET',
+    url === undefined ? '/' : `/?url=${encodeURIComponent(url)}`
+  );
 
 // Mock global fetch
 global.fetch = jest.fn().mockImplementation(() =>
@@ -31,7 +36,7 @@ global.fetch = jest.fn().mockImplementation(() =>
   })
 );
 
-describe('getWebText Lambda handler', () => {
+describe('GET /web-text', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -49,10 +54,7 @@ describe('getWebText Lambda handler', () => {
     );
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest('https://example.com')
-    );
+    const result = await getWebText('https://example.com');
 
     // Verify results
     expect(result.statusCode).toBe(200);
@@ -65,7 +67,7 @@ describe('getWebText Lambda handler', () => {
   // Test for missing URL parameter
   test('returns 400 error when URL parameter is missing', async () => {
     // Execute test
-    const result = await callHandler(handler, createRequest());
+    const result = await getWebText();
 
     // Verify results
     expect(result.statusCode).toBe(400);
@@ -78,10 +80,7 @@ describe('getWebText Lambda handler', () => {
   // Test for invalid URL scheme
   test('returns 403 error when URL scheme is not http or https', async () => {
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest('ftp://example.com')
-    );
+    const result = await getWebText('ftp://example.com');
 
     // Verify results
     expect(result.statusCode).toBe(403);
@@ -94,10 +93,7 @@ describe('getWebText Lambda handler', () => {
   // Test for private IP address access
   test('returns 403 error when trying to access private IP address', async () => {
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest('http://192.168.1.1')
-    );
+    const result = await getWebText('http://192.168.1.1');
 
     // Verify results
     expect(result.statusCode).toBe(403);
@@ -110,10 +106,7 @@ describe('getWebText Lambda handler', () => {
   // Test for localhost access
   test('returns 403 error when trying to access localhost', async () => {
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest('http://localhost')
-    );
+    const result = await getWebText('http://localhost');
 
     // Verify results
     expect(result.statusCode).toBe(403);
@@ -126,10 +119,7 @@ describe('getWebText Lambda handler', () => {
   // Test for domain resolving to private IP
   test('returns 403 error when domain resolves to private IP', async () => {
     // Execute test - the util.promisify mock handles giving us a private IP
-    const result = await callHandler(
-      handler,
-      createRequest('http://example-internal.com')
-    );
+    const result = await getWebText('http://example-internal.com');
 
     // Verify results
     expect(result.statusCode).toBe(403);
@@ -147,10 +137,7 @@ describe('getWebText Lambda handler', () => {
     console.error = jest.fn();
 
     // Execute test - the util.promisify mock will throw an error
-    const result = await callHandler(
-      handler,
-      createRequest('http://non-existent-domain.com')
-    );
+    const result = await getWebText('http://non-existent-domain.com');
 
     // Restore console.error
     console.error = originalConsoleError;
@@ -175,10 +162,7 @@ describe('getWebText Lambda handler', () => {
     console.log = jest.fn();
 
     // Execute test
-    const result = await callHandler(
-      handler,
-      createRequest('https://example.com')
-    );
+    const result = await getWebText('https://example.com');
 
     // Restore console.log
     console.log = originalConsoleLog;
@@ -197,7 +181,7 @@ describe('getWebText Lambda handler', () => {
     console.error = jest.fn();
 
     // Execute test
-    const result = await callHandler(handler, createRequest('not-a-valid-url'));
+    const result = await getWebText('not-a-valid-url');
 
     // Restore console.error
     console.error = originalConsoleError;

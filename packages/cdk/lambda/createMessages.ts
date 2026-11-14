@@ -1,11 +1,5 @@
-import { Request, Response } from 'express';
-import { getUserId } from './api/user';
-import { CreateMessagesRequest, ExtraData } from 'generative-ai-use-cases';
-import {
-  batchCreateMessages,
-  findChatById,
-  setChatUpdatedDate,
-} from './repository';
+import { Chat, ExtraData, ToBeRecordedMessage } from 'generative-ai-use-cases';
+import { batchCreateMessages, setChatUpdatedDate } from './repository';
 
 const FILE_UPLOAD_BUCKET_NAME = process.env.BUCKET_NAME!;
 
@@ -111,51 +105,31 @@ const isValidExtraData = (extra: ExtraData, bucketName: string): boolean => {
   );
 };
 
-export const handler = async (req: Request, res: Response): Promise<void> => {
+// Whether every attachment of the messages is one this app accepts
+export const hasValidExtraData = (messages: ToBeRecordedMessage[]): boolean =>
+  messages.every((message) =>
+    (message.extraData ?? []).every((extra) =>
+      isValidExtraData(extra, FILE_UPLOAD_BUCKET_NAME)
+    )
+  );
+
+// Saves the messages to the user's chat and moves the chat to the top of the
+// history. Returns the saved messages.
+export const createMessages = async (
+  userId: string,
+  chat: Chat,
+  chatId: string,
+  messages: ToBeRecordedMessage[]
+) => {
+  const saved = await batchCreateMessages(messages, userId, chatId);
+
+  // The messages are already saved, so a failure here must not fail the
+  // request; the chat just keeps its previous position in the history.
   try {
-    const input: CreateMessagesRequest = req.body;
-    const userId: string = getUserId(req);
-    const chatId = req.params.chatId;
-
-    // Authorization check: Verify if the specified chat belongs to the user
-    const chat = await findChatById(userId, chatId);
-    if (chat === null) {
-      res.status(403).json({
-        message: 'You do not have permission to post messages in the chat.',
-      });
-      return;
-    }
-
-    if (input.messages) {
-      for (const message of input.messages) {
-        if (message.extraData && message.extraData.length > 0) {
-          for (const extra of message.extraData) {
-            if (!isValidExtraData(extra, FILE_UPLOAD_BUCKET_NAME)) {
-              res.status(400).json({
-                message: 'Invalid extraData',
-              });
-              return;
-            }
-          }
-        }
-      }
-    }
-
-    const messages = await batchCreateMessages(input.messages, userId, chatId);
-
-    // The messages are already saved, so a failure here must not fail the
-    // request; the chat just keeps its previous position in the history.
-    try {
-      await setChatUpdatedDate(chat.id, chat.createdDate);
-    } catch (error) {
-      console.log('Failed to update updatedDate', error);
-    }
-
-    res.status(200).json({
-      messages,
-    });
+    await setChatUpdatedDate(chat.id, chat.createdDate);
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.log('Failed to update updatedDate', error);
   }
+
+  return saved;
 };
