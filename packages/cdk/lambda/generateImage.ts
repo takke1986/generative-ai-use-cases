@@ -1,34 +1,17 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
 import { GenerateImageRequest } from 'generative-ai-use-cases';
 import api from './utils/api';
 import { defaultImageGenerationModel } from './utils/models';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const req: GenerateImageRequest = JSON.parse(event.body!);
-    const model = req.model || defaultImageGenerationModel;
-    const res = await api[model.type].generateImage(model, req.params);
+    const input: GenerateImageRequest = req.body;
+    const model = input.model || defaultImageGenerationModel;
+    const result = await api[model.type].generateImage(model, input.params);
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: res,
-      isBase64Encoded: true,
-    };
+    res.status(200).type('json').send(result);
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: (error as Error).message }),
-    };
+    res.status(500).json({ message: (error as Error).message });
   }
 };

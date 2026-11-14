@@ -1,4 +1,5 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
+import { getUserId } from './api/user';
 import { CreateMessagesRequest, ExtraData } from 'generative-ai-use-cases';
 import {
   batchCreateMessages,
@@ -110,52 +111,37 @@ const isValidExtraData = (extra: ExtraData, bucketName: string): boolean => {
   );
 };
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const req: CreateMessagesRequest = JSON.parse(event.body!);
-    const userId: string =
-      event.requestContext.authorizer!.claims['cognito:username'];
-    const chatId = event.pathParameters!.chatId!;
+    const input: CreateMessagesRequest = req.body;
+    const userId: string = getUserId(req);
+    const chatId = req.params.chatId;
 
     // Authorization check: Verify if the specified chat belongs to the user
     const chat = await findChatById(userId, chatId);
     if (chat === null) {
-      return {
-        statusCode: 403,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          message: 'You do not have permission to post messages in the chat.',
-        }),
-      };
+      res.status(403).json({
+        message: 'You do not have permission to post messages in the chat.',
+      });
+      return;
     }
 
-    if (req.messages) {
-      for (const message of req.messages) {
+    if (input.messages) {
+      for (const message of input.messages) {
         if (message.extraData && message.extraData.length > 0) {
           for (const extra of message.extraData) {
             if (!isValidExtraData(extra, FILE_UPLOAD_BUCKET_NAME)) {
-              return {
-                statusCode: 400,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Access-Control-Allow-Origin': '*',
-                },
-                body: JSON.stringify({
-                  message: 'Invalid extraData',
-                }),
-              };
+              res.status(400).json({
+                message: 'Invalid extraData',
+              });
+              return;
             }
           }
         }
       }
     }
 
-    const messages = await batchCreateMessages(req.messages, userId, chatId);
+    const messages = await batchCreateMessages(input.messages, userId, chatId);
 
     // The messages are already saved, so a failure here must not fail the
     // request; the chat just keeps its previous position in the history.
@@ -165,25 +151,11 @@ export const handler = async (
       console.log('Failed to update updatedDate', error);
     }
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        messages,
-      }),
-    };
+    res.status(200).json({
+      messages,
+    });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

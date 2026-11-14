@@ -1,5 +1,6 @@
+import { Request, Response } from 'express';
+import { getClaims } from './api/user';
 import { v4 as uuidv4 } from 'uuid';
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {
   TranscribeClient,
   StartTranscriptionJobCommand,
@@ -8,19 +9,17 @@ import {
 import { StartTranscriptionRequest } from 'generative-ai-use-cases';
 import { sanitizeTranscribeLanguageOptions } from '@generative-ai-use-cases/common';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
     const client = new TranscribeClient({});
-    const req: StartTranscriptionRequest = JSON.parse(event.body!);
-    const userId = event.requestContext.authorizer!.claims.sub;
+    const input: StartTranscriptionRequest = req.body;
+    const userId = getClaims(req).sub;
 
-    const { audioUrl, speakerLabel, maxSpeakers, languageCode } = req;
+    const { audioUrl, speakerLabel, maxSpeakers, languageCode } = input;
     // The browser sends the user's candidate languages; only known codes are
     // used, and a missing or invalid list falls back to Japanese and English
     const languageOptions = sanitizeTranscribeLanguageOptions(
-      req.languageOptions
+      input.languageOptions
     ) as LanguageCode[];
 
     const uuid = uuidv4();
@@ -43,27 +42,13 @@ export const handler = async (
         },
       ],
     });
-    const res = await client.send(command);
+    const result = await client.send(command);
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        jobName: res.TranscriptionJob!.TranscriptionJobName,
-      }),
-    };
+    res.status(200).json({
+      jobName: result.TranscriptionJob!.TranscriptionJobName,
+    });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

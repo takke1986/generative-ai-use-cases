@@ -1,5 +1,5 @@
-import { APIGatewayProxyEvent } from 'aws-lambda';
 import { handler } from '../../lambda/createMessages';
+import { callHandler, HandlerRequest } from './api/callHandler';
 import {
   batchCreateMessages,
   findChatById,
@@ -31,25 +31,17 @@ afterAll(() => {
   process.env = originalEnv;
 });
 
-// Helper function to create APIGatewayProxyEvent
-function createAPIGatewayProxyEvent(
+// Helper function to create the request the handler receives
+function createRequest(
   body: unknown | null,
   chatId?: string,
   userId?: string
-): APIGatewayProxyEvent {
+): HandlerRequest {
   return {
-    body: body ? JSON.stringify(body) : null,
-    pathParameters: chatId ? { chatId } : {},
-    requestContext: {
-      authorizer: userId
-        ? {
-            claims: {
-              'cognito:username': userId,
-            },
-          }
-        : undefined,
-    },
-  } as APIGatewayProxyEvent;
+    body: body ?? undefined,
+    params: chatId ? { chatId } : {},
+    userId,
+  };
 }
 
 describe('createMessages Lambda handler', () => {
@@ -97,8 +89,9 @@ describe('createMessages Lambda handler', () => {
     mockedBatchCreateMessages.mockResolvedValue(expectedRecordedMessages);
 
     // Execute test
-    const result = await handler(
-      createAPIGatewayProxyEvent({ messages }, chatId, userId)
+    const result = await callHandler(
+      handler,
+      createRequest({ messages }, chatId, userId)
     );
 
     // Verify results
@@ -133,8 +126,9 @@ describe('createMessages Lambda handler', () => {
     mockedBatchCreateMessages.mockResolvedValue([]);
     mockedSetChatUpdatedDate.mockRejectedValue(new Error('throttled'));
 
-    const result = await handler(
-      createAPIGatewayProxyEvent(
+    const result = await callHandler(
+      handler,
+      createRequest(
         {
           messages: [
             {
@@ -202,8 +196,9 @@ describe('createMessages Lambda handler', () => {
     });
     mockedBatchCreateMessages.mockResolvedValue(expectedRecordedMessages);
 
-    const result = await handler(
-      createAPIGatewayProxyEvent({ messages }, chatId, userId)
+    const result = await callHandler(
+      handler,
+      createRequest({ messages }, chatId, userId)
     );
 
     expect(result.statusCode).toBe(200);
@@ -247,8 +242,9 @@ describe('createMessages Lambda handler', () => {
       updatedDate: '',
     });
 
-    const result = await handler(
-      createAPIGatewayProxyEvent({ messages }, chatId, userId)
+    const result = await callHandler(
+      handler,
+      createRequest({ messages }, chatId, userId)
     );
 
     expect(result.statusCode).toBe(400);
@@ -291,8 +287,9 @@ describe('createMessages Lambda handler', () => {
       updatedDate: '',
     });
 
-    const result = await handler(
-      createAPIGatewayProxyEvent({ messages }, chatId, userId)
+    const result = await callHandler(
+      handler,
+      createRequest({ messages }, chatId, userId)
     );
 
     expect(result.statusCode).toBe(400);
@@ -338,8 +335,9 @@ describe('createMessages Lambda handler', () => {
         },
       ];
 
-      const result = await handler(
-        createAPIGatewayProxyEvent({ messages }, chatId, userId)
+      const result = await callHandler(
+        handler,
+        createRequest({ messages }, chatId, userId)
       );
 
       expect(result.statusCode).toBe(400);
@@ -368,8 +366,9 @@ describe('createMessages Lambda handler', () => {
     mockedFindChatById.mockResolvedValue(null);
 
     // Execute test
-    const result = await handler(
-      createAPIGatewayProxyEvent({ messages }, chatId, userId)
+    const result = await callHandler(
+      handler,
+      createRequest({ messages }, chatId, userId)
     );
 
     // Verify results
@@ -402,8 +401,9 @@ describe('createMessages Lambda handler', () => {
     });
 
     // Execute test
-    const result = await handler(
-      createAPIGatewayProxyEvent({ messages }, chatId, userId)
+    const result = await callHandler(
+      handler,
+      createRequest({ messages }, chatId, userId)
     );
 
     // Verify results

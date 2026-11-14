@@ -1,4 +1,5 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
+import { getUserId } from '../api/user';
 import { UpdateMeetingMinutesCustomPromptRequest } from 'generative-ai-use-cases';
 import {
   listMeetingMinutesCustomPrompts,
@@ -7,81 +8,51 @@ import {
   deleteMeetingMinutesCustomPrompt,
 } from './repository';
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-};
-
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId: string =
-      event.requestContext.authorizer!.claims['cognito:username'];
-    const method = event.httpMethod;
+    const userId: string = getUserId(req);
+    const method = req.method;
 
     if (method === 'GET') {
       const items = await listMeetingMinutesCustomPrompts(userId);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify(items),
-      };
+      res.status(200).json(items);
+      return;
     }
 
     if (method === 'POST') {
-      const req = JSON.parse(event.body!);
+      const input = req.body;
       const prompt = await createMeetingMinutesCustomPrompt(
         userId,
-        req.meetingMinutesCustomPromptTitle,
-        req.meetingMinutesCustomPromptBody
+        input.meetingMinutesCustomPromptTitle,
+        input.meetingMinutesCustomPromptBody
       );
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ meetingMinutesCustomPrompt: prompt }),
-      };
+      res.status(200).json({ meetingMinutesCustomPrompt: prompt });
+      return;
     }
 
     if (method === 'PUT') {
-      const id = event.pathParameters!.id!;
-      const req: UpdateMeetingMinutesCustomPromptRequest = JSON.parse(
-        event.body!
-      );
+      const id = req.params.id;
+      const input: UpdateMeetingMinutesCustomPromptRequest = req.body;
       const prompt = await updateMeetingMinutesCustomPrompt(
         userId,
         id,
-        req.meetingMinutesCustomPromptTitle,
-        req.meetingMinutesCustomPromptBody
+        input.meetingMinutesCustomPromptTitle,
+        input.meetingMinutesCustomPromptBody
       );
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ meetingMinutesCustomPrompt: prompt }),
-      };
+      res.status(200).json({ meetingMinutesCustomPrompt: prompt });
+      return;
     }
 
     if (method === 'DELETE') {
-      const id = event.pathParameters!.id!;
+      const id = req.params.id;
       await deleteMeetingMinutesCustomPrompt(userId, id);
-      return {
-        statusCode: 204,
-        headers,
-        body: '',
-      };
+      res.status(204).send();
+      return;
     }
 
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ message: 'Method Not Allowed' }),
-    };
+    res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

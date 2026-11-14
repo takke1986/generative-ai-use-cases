@@ -1,48 +1,25 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
+import { getUserId } from './api/user';
 import { createShareId, findChatById } from './repository';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId: string =
-      event.requestContext.authorizer!.claims['cognito:username'];
-    const chatId = event.pathParameters!.chatId!;
+    const userId = getUserId(req);
+    const chatId = req.params.chatId;
 
     // Authorization check: Verify if the specified chat belongs to the user
     const chat = await findChatById(userId, chatId);
     if (chat === null) {
-      return {
-        statusCode: 403,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          message: 'You do not have permission to share this chat.',
-        }),
-      };
+      res.status(403).json({
+        message: 'You do not have permission to share this chat.',
+      });
+      return;
     }
 
-    const response = await createShareId(userId, chatId);
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(response),
-    };
+    const result = await createShareId(userId, chatId);
+    res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

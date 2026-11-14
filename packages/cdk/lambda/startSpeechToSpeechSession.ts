@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
 import {
   LambdaClient,
   InvokeCommand,
@@ -7,26 +7,17 @@ import {
 import { SpeechToSpeechSessionRequest } from 'generative-ai-use-cases';
 import { isSpeechToSpeechVoice } from '@generative-ai-use-cases/common';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { channel, model, voiceId }: SpeechToSpeechSessionRequest =
-      JSON.parse(event.body!);
+    const { channel, model, voiceId }: SpeechToSpeechSessionRequest = req.body;
 
     // The voiceId is passed to Bedrock as is, so accept only the voices of the model
     if (
       voiceId !== undefined &&
       !isSpeechToSpeechVoice(model?.modelId ?? '', voiceId)
     ) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({ message: 'Invalid voiceId' }),
-      };
+      res.status(400).json({ message: 'Invalid voiceId' });
+      return;
     }
 
     const lambda = new LambdaClient({});
@@ -39,23 +30,9 @@ export const handler = async (
       })
     );
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ channel }),
-    };
+    res.status(200).json({ channel });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

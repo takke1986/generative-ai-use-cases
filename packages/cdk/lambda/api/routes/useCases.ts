@@ -1,4 +1,4 @@
-import { Router, Request } from 'express';
+import { Router } from 'express';
 import { handler as listUseCasesHandler } from '../../useCaseBuilder/listUseCases';
 import { handler as listFavoriteUseCasesHandler } from '../../useCaseBuilder/listFavoriteUseCases';
 import { handler as getUseCaseHandler } from '../../useCaseBuilder/getUseCase';
@@ -9,24 +9,16 @@ import { handler as toggleFavoriteHandler } from '../../useCaseBuilder/toggleFav
 import { handler as toggleSharedHandler } from '../../useCaseBuilder/toggleShared';
 import { handler as listRecentlyUsedUseCasesHandler } from '../../useCaseBuilder/listRecentlyUsedUseCases';
 import { handler as updateRecentlyUsedUseCaseHandler } from '../../useCaseBuilder/updateRecentlyUsedUseCase';
-import { wrapHandler } from './helpers';
 
 export const router = Router();
 
-const ucId = (req: Request) => ({
-  useCaseId: req.params.useCaseId,
-});
-
-router.get('/', wrapHandler(listUseCasesHandler));
-router.get('/favorite', wrapHandler(listFavoriteUseCasesHandler));
-router.get('/recent', wrapHandler(listRecentlyUsedUseCasesHandler));
-router.put(
-  '/recent/:useCaseId',
-  wrapHandler(updateRecentlyUsedUseCaseHandler, ucId)
-);
-router.get('/:useCaseId', wrapHandler(getUseCaseHandler, ucId));
-router.post('/', wrapHandler(createUseCaseHandler));
-router.put('/:useCaseId', wrapHandler(updateUseCaseHandler, ucId));
-router.delete('/:useCaseId', wrapHandler(deleteUseCaseHandler, ucId));
-router.put('/:useCaseId/favorite', wrapHandler(toggleFavoriteHandler, ucId));
-router.put('/:useCaseId/shared', wrapHandler(toggleSharedHandler, ucId));
+router.get('/', listUseCasesHandler);
+router.get('/favorite', listFavoriteUseCasesHandler);
+router.get('/recent', listRecentlyUsedUseCasesHandler);
+router.put('/recent/:useCaseId', updateRecentlyUsedUseCaseHandler);
+router.get('/:useCaseId', getUseCaseHandler);
+router.post('/', createUseCaseHandler);
+router.put('/:useCaseId', updateUseCaseHandler);
+router.delete('/:useCaseId', deleteUseCaseHandler);
+router.put('/:useCaseId/favorite', toggleFavoriteHandler);
+router.put('/:useCaseId/shared', toggleSharedHandler);

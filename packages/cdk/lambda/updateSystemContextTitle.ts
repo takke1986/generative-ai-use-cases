@@ -1,38 +1,22 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
+import { getUserId } from './api/user';
 import { UpdateSystemContextTitleRequest } from 'generative-ai-use-cases';
 import { updateSystemContextTitle } from './repository';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId: string =
-      event.requestContext.authorizer!.claims['cognito:username'];
-    const systemContextId = event.pathParameters!.systemContextId!;
-    const req: UpdateSystemContextTitleRequest = JSON.parse(event.body!);
+    const userId: string = getUserId(req);
+    const systemContextId = req.params.systemContextId;
+    const input: UpdateSystemContextTitleRequest = req.body;
     const systemContext = await updateSystemContextTitle(
       userId,
       systemContextId,
-      req.title
+      input.title
     );
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ systemContext }),
-    };
+    res.status(200).json({ systemContext });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

@@ -1,15 +1,13 @@
+import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetFileUploadSignedUrlRequest } from 'generative-ai-use-cases';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const req: GetFileUploadSignedUrlRequest = JSON.parse(event.body!);
-    const filename = req.filename;
+    const input: GetFileUploadSignedUrlRequest = req.body;
+    const filename = input.filename;
     const uuid = uuidv4();
 
     const client = new S3Client({});
@@ -21,23 +19,9 @@ export const handler = async (
 
     const signedUrl = await getSignedUrl(client, command, { expiresIn: 3600 });
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: signedUrl,
-    };
+    res.status(200).type('json').send(signedUrl);
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

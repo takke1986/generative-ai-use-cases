@@ -1,26 +1,18 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
 import { findUserIdAndChatId, findChatById, listMessages } from './repository';
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const shareId = event.pathParameters!.shareId!;
-    const res = await findUserIdAndChatId(shareId);
+    const shareId = req.params.shareId;
+    const result = await findUserIdAndChatId(shareId);
 
-    if (res === null) {
-      return {
-        statusCode: 404,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: '',
-      };
+    if (result === null) {
+      res.status(404).send();
+      return;
     }
 
-    const userId = res.userId;
-    const chatId = res.chatId;
+    const userId = result.userId;
+    const chatId = result.chatId;
 
     const chat = await findChatById(
       // SAML authentication includes # in userId
@@ -30,26 +22,12 @@ export const handler = async (
     );
     const messages = await listMessages(chatId.split('#')[1]);
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        chat,
-        messages,
-      }),
-    };
+    res.status(200).json({
+      chat,
+      messages,
+    });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

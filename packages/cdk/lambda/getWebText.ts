@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
 import { parse } from 'node-html-parser';
 import sanitizeHtml from 'sanitize-html';
 import { URL } from 'url';
@@ -105,41 +105,27 @@ async function validateUrl(
   }
 }
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const url = event?.queryStringParameters?.url;
+    const url = typeof req.query.url === 'string' ? req.query.url : undefined;
 
     if (!url) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({ message: 'url is missing' }),
-      };
+      res.status(400).json({ message: 'url is missing' });
+      return;
     }
 
     // Validate URL safety
     const validation = await validateUrl(url);
     if (!validation.valid) {
-      return {
-        statusCode: 403,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          message: validation.message || 'Access denied',
-        }),
-      };
+      res.status(403).json({
+        message: validation.message || 'Access denied',
+      });
+      return;
     }
 
     // Execute request if URL is confirmed safe
-    const res = await fetch(url);
-    const html = await res.text();
+    const result = await fetch(url);
+    const html = await result.text();
     // Fix invalid tags
     const cleanHtml = sanitizeHtml(html, {
       // body and html are removed by default, so this option prevents that
@@ -156,23 +142,9 @@ export const handler = async (
     });
     const text = root?.querySelector('body')?.removeWhitespace().text;
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ text }),
-    };
+    res.status(200).json({ text });
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

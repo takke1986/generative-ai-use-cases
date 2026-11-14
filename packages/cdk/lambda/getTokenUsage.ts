@@ -1,50 +1,34 @@
+import { Request, Response } from 'express';
+import { getUserId } from './api/user';
 import { aggregateTokenUsage } from './repository';
-import { GetTokenUsageEvent } from 'generative-ai-use-cases';
 
-export const handler = async (event: GetTokenUsageEvent) => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('Getting token usage statistics', { event });
+    console.log('Getting token usage statistics', { query: req.query });
 
     // Get user ID from Cognito
-    const userId = event.requestContext.authorizer!.claims['cognito:username'];
-    const { startDate, endDate } = event.queryStringParameters || {};
+    const userId = getUserId(req);
+    const { startDate, endDate } = req.query as {
+      startDate?: string;
+      endDate?: string;
+    };
 
     if (!startDate || !endDate) {
-      return {
-        statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          message: 'startDate and endDate parameters are required',
-        }),
-      };
+      res.status(400).json({
+        message: 'startDate and endDate parameters are required',
+      });
+      return;
     }
 
     // Get aggregated data for the specified period
     const stats = await aggregateTokenUsage(startDate, endDate, [userId]);
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify(stats),
-    };
+    res.status(200).json(stats);
   } catch (error) {
     console.error('Error getting token usage statistics:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        message: 'Internal server error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }),
-    };
+    res.status(500).json({
+      message: 'Internal server error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 };

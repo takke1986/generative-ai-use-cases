@@ -1,4 +1,5 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { Request, Response } from 'express';
+import { getClaims } from './api/user';
 import {
   TranscribeClient,
   GetTranscriptionJobCommand,
@@ -16,39 +17,31 @@ function parseS3Url(s3Url: string) {
   return { bucket, key };
 }
 
-export const handler = async (
-  event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+export const handler = async (req: Request, res: Response): Promise<void> => {
   try {
     const transcribeClient = new TranscribeClient({});
     const s3Client = new S3Client({});
-    const jobName = event.pathParameters!.jobName;
-    const userId = event.requestContext.authorizer!.claims.sub;
+    const jobName = req.params.jobName;
+    const userId = getClaims(req).sub;
 
     const command = new GetTranscriptionJobCommand({
       TranscriptionJobName: jobName,
     });
-    const res = await transcribeClient.send(command);
+    const result = await transcribeClient.send(command);
 
     if (
       // Return Forbidden error if the user who started the job is different
-      res.TranscriptionJob?.Tags!.find(
+      result.TranscriptionJob?.Tags!.find(
         (tag) => tag.Key === 'userId' && tag.Value !== userId
       )
     ) {
-      return {
-        statusCode: 403,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({ message: 'Forbidden' }),
-      };
+      res.status(403).json({ message: 'Forbidden' });
+      return;
     }
 
-    if (res.TranscriptionJob?.TranscriptionJobStatus === 'COMPLETED') {
+    if (result.TranscriptionJob?.TranscriptionJobStatus === 'COMPLETED') {
       const { bucket, key } = parseS3Url(
-        res.TranscriptionJob.Transcript!.TranscriptFileUri!
+        result.TranscriptionJob.Transcript!.TranscriptFileUri!
       );
       const s3Result = await s3Client.send(
         new GetObjectCommand({
@@ -91,40 +84,21 @@ export const handler = async (
         }));
 
       const response: GetTranscriptionResponse = {
-        status: res.TranscriptionJob?.TranscriptionJobStatus,
+        status: result.TranscriptionJob?.TranscriptionJobStatus,
         languageCode: output.results.language_code,
         transcripts: transcripts,
       };
 
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify(response),
-      };
+      res.status(200).json(response);
+      return;
     } else {
-      return {
-        statusCode: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-        body: JSON.stringify({
-          status: res.TranscriptionJob?.TranscriptionJobStatus,
-        }),
-      };
+      res.status(200).json({
+        status: result.TranscriptionJob?.TranscriptionJobStatus,
+      });
+      return;
     }
   } catch (error) {
     console.log(error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };

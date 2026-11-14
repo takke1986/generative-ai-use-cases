@@ -56,23 +56,27 @@ packages/cdk/lambda/
 - **データアクセス層**: repository.tsで一元管理、機能別に必要な場合のみ分離
 - **共通処理**: utils/配下に外部サービス別に分割
 
-#### 暫定アダプター（helpers.ts）について
+#### ルートとハンドラーの接続
 
-現在、既存のハンドラー（`APIGatewayProxyEvent` ベース）を Express ルートに接続するため、`api/routes/helpers.ts` の `wrapHandler` で暫定的にアダプターを使用している。今後、各ハンドラーを Express ネイティブ（`req/res`）に段階的にリファクタリングし、このアダプターを廃止する予定。
+各ハンドラーは Express ネイティブ（`req/res`）で実装し、`api/routes/` のルートにそのまま渡す。ログイン中のユーザーは `api/user.ts` の `getUserId(req)`（その他の claims は `getClaims(req)`）で取得する。
 
 ```typescript
-// 現状（暫定）: wrapHandler で既存ハンドラーをラップ
+// api/routes/chats.ts
 import { handler as createChatHandler } from '../../createChat';
-import { wrapHandler } from './helpers';
 
-router.post('/', wrapHandler(createChatHandler));
+router.post('/', createChatHandler);
 
-// 将来（目標）: Express ネイティブなルートハンドラー
-router.post('/', async (req: Request, res: Response) => {
-  const userId = getUserId(req);
-  const result = await createChat(userId, req.body);
-  res.json(result);
-});
+// createChat.ts
+export const handler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = getUserId(req);
+    const chat = await createChat(userId);
+    res.status(200).json({ chat });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
 ```
 
 #### フォルダ分離の判断基準
@@ -102,7 +106,7 @@ chat/
 
 #### Express ルートハンドラー（API Gateway 経由）
 
-現在は暫定アダプター経由で既存ハンドラーを使用しているが、新規実装やリファクタリング時は Express ネイティブで実装する。
+Express ネイティブで実装する。
 
 ```typescript
 // ✅ 良い例 - Express ネイティブなルートハンドラー（目標形式）
@@ -112,8 +116,7 @@ export const router = Router();
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const userId =
-      req.apiGateway.event.requestContext.authorizer.claims['cognito:username'];
+    const userId = getUserId(req);
     const result = await businessLogic(userId, req.body);
     res.json(result);
   } catch (error) {
