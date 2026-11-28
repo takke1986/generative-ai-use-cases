@@ -177,6 +177,7 @@ const GenerateTextPage: React.FC = () => {
             placeholder={t('generateText.input_placeholder')}
             value={information}
             onChange={setInformation}
+            voiceInput
             maxHeight={-1}
           />
 

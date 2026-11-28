@@ -977,6 +977,7 @@ const GenerateImagePage: React.FC = () => {
                 help={t('generateImage.help.prompt')}
                 value={prompt}
                 onChange={setPrompt}
+                voiceInput
                 maxHeight={60}
                 rows={2}
               />

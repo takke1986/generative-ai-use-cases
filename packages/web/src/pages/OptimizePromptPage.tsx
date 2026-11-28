@@ -131,6 +131,7 @@ const OptimizePromptPage: React.FC = () => {
                 placeholder={t('optimizePrompt.input_placeholder')}
                 value={prompt}
                 onChange={setPrompt}
+                voiceInput
                 maxHeight={-1}
                 rows={5}
               />

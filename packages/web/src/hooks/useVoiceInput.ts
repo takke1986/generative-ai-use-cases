@@ -4,6 +4,7 @@ import {
   TranscribeAudioResponse,
 } from 'generative-ai-use-cases';
 import useHttp from './useHttp';
+import useUserSetting from './useUserSetting';
 import { getTranscribeLanguageOptions } from '../utils/AudioUtils';
 
 // Long enough for a spoken chat message, and well under the API limit
@@ -26,6 +27,12 @@ const SPEECH_LANGUAGES: Record<string, string> = {
 
 export const speechLanguage = (displayLanguage: string): string | undefined =>
   SPEECH_LANGUAGES[displayLanguage.split('-')[0]];
+
+/** The text with the transcript added at the end, separated by a space */
+export const appendTranscript = (current: string, text: string): string => {
+  const separator = current === '' || /\s$/.test(current) ? '' : ' ';
+  return current + separator + text;
+};
 
 export type VoiceInputStatus = 'idle' | 'recording' | 'transcribing';
 
@@ -155,6 +162,33 @@ const useVoiceInput = (
   }, []);
 
   return { supported, status, error, toggle };
+};
+
+export type VoiceInput = ReturnType<typeof useVoiceInput>;
+
+/**
+ * Voice input into a text field: the transcript arrives after the recording,
+ * so it is added to the text as it is then, not as it was when the recording
+ * started.
+ */
+export const useVoiceInputInto = (
+  displayLanguage: string,
+  value: string,
+  onChange: (value: string) => void
+): VoiceInput => {
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  return useVoiceInput(displayLanguage, (text) => {
+    onChangeRef.current(appendTranscript(valueRef.current, text));
+  });
+};
+
+/** Whether to offer voice input: on for the deployment and the user, and possible in the browser */
+export const useShowVoiceInput = (voice: VoiceInput): boolean => {
+  const { settingShowVoiceInput } = useUserSetting();
+  return voiceInputEnabled && settingShowVoiceInput && voice.supported;
 };
 
 export default useVoiceInput;

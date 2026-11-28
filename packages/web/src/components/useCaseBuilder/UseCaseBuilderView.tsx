@@ -600,6 +600,7 @@ const UseCaseBuilderView: React.FC<Props> = (props) => {
                     onChange={(v) => {
                       setValue(item.label, v);
                     }}
+                    voiceInput
                   />
                 )}
                 {item.inputType === 'select' && (

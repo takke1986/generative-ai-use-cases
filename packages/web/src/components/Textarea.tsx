@@ -3,6 +3,7 @@ import RowItem, { RowItemProps } from './RowItem';
 import Help from './Help';
 import { useTranslation } from 'react-i18next';
 import useUserSetting from '../hooks/useUserSetting';
+import { VoiceInputField } from './VoiceInputButton';
 
 type Props = RowItemProps & {
   value?: string;
@@ -17,6 +18,8 @@ type Props = RowItemProps & {
   disabled?: boolean;
   required?: boolean;
   resizable?: boolean;
+  /** Microphone button under the field that adds speech to the text. */
+  voiceInput?: boolean;
   onEnter?: () => void;
   onChange: (value: string) => void;
   onPaste?: (pasteEvent: React.ClipboardEvent) => void;
@@ -99,6 +102,15 @@ const Textarea: React.FC<Props> = (props) => {
               * {t('common.required')}
             </span>
           )}
+          {/* On the label line, clear of buttons that pages put over the field */}
+          {props.voiceInput && (
+            <VoiceInputField
+              className="ml-auto"
+              value={props.value ?? ''}
+              onChange={props.onChange}
+              disabled={props.disabled}
+            />
+          )}
         </div>
       )}
       <textarea
@@ -146,6 +158,13 @@ const Textarea: React.FC<Props> = (props) => {
       />
       {props.hint && (
         <div className="-mt-0.5 text-xs text-gray-400">{props.hint}</div>
+      )}
+      {props.voiceInput && !props.label && (
+        <VoiceInputField
+          value={props.value ?? ''}
+          onChange={props.onChange}
+          disabled={props.disabled}
+        />
       )}
     </RowItem>
   );

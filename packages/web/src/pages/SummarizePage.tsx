@@ -174,6 +174,7 @@ const SummarizePage: React.FC = () => {
             placeholder={t('summarize.enter_text')}
             value={sentence}
             onChange={setSentence}
+            voiceInput
             maxHeight={-1}
           />
 

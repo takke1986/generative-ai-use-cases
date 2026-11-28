@@ -545,6 +545,7 @@ const GenerateDiagramPage: React.FC = () => {
                   placeholder={t('diagram.input_placeholder')}
                   value={content}
                   onChange={setContent}
+                  voiceInput
                   className="w-full resize-none overflow-y-auto"
                 />
               </div>

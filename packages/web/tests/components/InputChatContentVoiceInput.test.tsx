@@ -24,15 +24,20 @@ vi.mock('../../src/hooks/useFiles', () => ({
 }));
 
 // A browser with a microphone, so only the settings decide the button
-vi.mock('../../src/hooks/useVoiceInput', () => ({
-  voiceInputEnabled: true,
-  default: () => ({
+vi.mock('../../src/hooks/useVoiceInput', () => {
+  const voice = () => ({
     supported: true,
     status: 'idle',
     error: null,
     toggle: vi.fn(),
-  }),
-}));
+  });
+  return {
+    voiceInputEnabled: true,
+    default: voice,
+    useVoiceInputInto: voice,
+    useShowVoiceInput: () => localStorage.getItem('showVoiceInput') !== 'false',
+  };
+});
 
 // The textarea resizes itself with ResizeObserver, which jsdom does not have
 globalThis.ResizeObserver ??= class {

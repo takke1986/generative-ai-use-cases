@@ -486,6 +486,7 @@ const GenerateVideoPage: React.FC = () => {
                 <Textarea
                   value={prompt}
                   onChange={setPrompt}
+                  voiceInput
                   label={t('video.prompt.title')}
                   placeholder={t('video.prompt.placeholder')}
                   rows={3}

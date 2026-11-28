@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import ButtonSend from './ButtonSend';
 import ButtonToggle from './ButtonToggle';
 import Textarea from './Textarea';
@@ -14,15 +14,14 @@ import {
   PiSpinnerGap,
   PiSlidersHorizontal,
   PiClockCountdownLight,
-  PiMicrophone,
-  PiStopFill,
 } from 'react-icons/pi';
 import useFiles from '../hooks/useFiles';
 import FileCard from './FileCard';
 import { FileLimit } from 'generative-ai-use-cases';
 import { useTranslation } from 'react-i18next';
 import useUserSetting from '../hooks/useUserSetting';
-import useVoiceInput, { voiceInputEnabled } from '../hooks/useVoiceInput';
+import { useShowVoiceInput, useVoiceInputInto } from '../hooks/useVoiceInput';
+import { VoiceInputButton } from './VoiceInputButton';
 import Tooltip from './Tooltip';
 import {
   createPastedTextFile,
@@ -75,25 +74,15 @@ type Props = {
 
 const InputChatContent: React.FC<Props> = (props) => {
   const { t, i18n } = useTranslation();
-  const { settingSubmitCmdOrCtrlEnter, settingShowVoiceInput } =
-    useUserSetting();
+  const { settingSubmitCmdOrCtrlEnter } = useUserSetting();
 
-  // The transcript arrives after the recording, so append it to the text as
-  // it is then, not as it was when the recording started
-  const contentRef = useRef(props.content);
-  contentRef.current = props.content;
-  const onChangeContentRef = useRef(props.onChangeContent);
-  onChangeContentRef.current = props.onChangeContent;
-  const voice = useVoiceInput(i18n.language, (text) => {
-    const current = contentRef.current;
-    const separator = current === '' || /\s$/.test(current) ? '' : ' ';
-    onChangeContentRef.current(current + separator + text);
-  });
-  const showVoiceInput =
-    !!props.voiceInput &&
-    voiceInputEnabled &&
-    settingShowVoiceInput &&
-    voice.supported;
+  const voice = useVoiceInputInto(
+    i18n.language,
+    props.content,
+    props.onChangeContent
+  );
+  const voiceInputOffered = useShowVoiceInput(voice);
+  const showVoiceInput = !!props.voiceInput && voiceInputOffered;
   const { pathname } = useLocation();
   const { loading: chatLoading, isEmpty: chatIsEmpty } = useChat(pathname);
   const {
@@ -341,32 +330,7 @@ const InputChatContent: React.FC<Props> = (props) => {
           </div>
           <div className="flex items-center gap-x-2">
             {showVoiceInput && (
-              <Tooltip
-                message={
-                  voice.status === 'recording'
-                    ? t('inputs.voice_stop')
-                    : t('inputs.voice_input')
-                }
-                position="center"
-                topPosition="-top-16"
-                nowrap>
-                <ButtonIcon
-                  onClick={voice.toggle}
-                  disabled={voice.status === 'transcribing' || loading}
-                  className={
-                    voice.status === 'recording'
-                      ? 'animate-pulse text-red-500'
-                      : 'text-gray-500'
-                  }>
-                  {voice.status === 'transcribing' ? (
-                    <PiSpinnerGap className="animate-spin" />
-                  ) : voice.status === 'recording' ? (
-                    <PiStopFill />
-                  ) : (
-                    <PiMicrophone />
-                  )}
-                </ButtonIcon>
-              </Tooltip>
+              <VoiceInputButton voice={voice} disabled={loading} />
             )}
             {props.setting && (
               <Tooltip
